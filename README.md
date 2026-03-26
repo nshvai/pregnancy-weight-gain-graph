@@ -92,3 +92,11 @@ http://localhost:8000/
 - The JSON includes the model parameters (`Mu`, `Sigma`, `Lambda`, `Tau`) and the selected percentiles from the supplementary tables.
 - Current rendering uses the published percentile columns directly rather than recomputing them from the BCT parameters. The chart shows absolute expected weight; weight gain is visible in hover tooltips.
 - Informational only; not medical advice.
+
+
+## Measurement overlays
+
+- The reference curve stays fixed from the paper's model.
+- User-entered measurements are overlaid on top.
+- For each user measurement, the app computes an approximate percentile and z-score from the published BCT parameters for the closest gestational week.
+- The current measurement uses a hollow circle so it is visually distinct from past measurements.
