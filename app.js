@@ -59,51 +59,6 @@ function buildExpectedWeights(groupData, prePregWeightKg) {
   };
 }
 
-// Abramowitz-Stegun approximation for erf
-function erf(x) {
-  const sign = x >= 0 ? 1 : -1;
-  x = Math.abs(x);
-
-  const a1 = 0.254829592;
-  const a2 = -0.284496736;
-  const a3 = 1.421413741;
-  const a4 = -1.453152027;
-  const a5 = 1.061405429;
-  const p = 0.3275911;
-
-  const t = 1 / (1 + p * x);
-  const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-  return sign * y;
-}
-
-function normalCdf(z) {
-  return 0.5 * (1 + erf(z / Math.SQRT2));
-}
-
-// Use the published BCT parameters in the supplementary tables.
-// Here we compute an approximate z-score from the Box-Cox transformed value
-// and convert it to a percentile using the normal CDF.
-// This stays faithful to the paper's reference model while avoiding refitting.
-function computeBctStats(row, gainKg) {
-  const mu = Number(row.Mu);
-  const sigma = Number(row.Sigma);
-  const lambda = Number(row.Lambda);
-
-  if (![mu, sigma, lambda, gainKg].every(Number.isFinite) || sigma <= 0 || mu <= 0) {
-    return { z: null, percentile: null };
-  }
-
-  let z;
-  if (Math.abs(lambda) < 1e-8) {
-    z = Math.log(gainKg / mu) / sigma;
-  } else {
-    z = (Math.pow(gainKg / mu, lambda) - 1) / (lambda * sigma);
-  }
-
-  const percentile = normalCdf(z) * 100;
-  return { z, percentile };
-}
-
 function closestRowByWeek(groupData, week) {
   let best = groupData[0];
   let bestDist = Math.abs(groupData[0].week - week);
@@ -117,11 +72,43 @@ function closestRowByWeek(groupData, week) {
   return best;
 }
 
-function formatStatsForHover(stats) {
-  if (!stats || stats.z === null || stats.percentile === null || !Number.isFinite(stats.z) || !Number.isFinite(stats.percentile)) {
-    return "Reference percentile unavailable";
+// Estimate percentile directly from the published percentile columns in the supplementary tables.
+// This is more robust for the UI than exposing z-scores and avoids the previous broken values.
+function estimatePercentileFromRow(row, gainKg) {
+  const percentileKeys = [
+    "P1", "P2.3", "P5", "P10", "P16", "P20", "P25",
+    "P50", "P75", "P80", "P84", "P90", "P95", "P97.7", "P99"
+  ];
+
+  const points = percentileKeys
+    .map(key => {
+      const p = Number(key.slice(1));
+      const value = Number(row[key]);
+      return Number.isFinite(p) && Number.isFinite(value) ? { p, value } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.value - b.value);
+
+  if (!points.length || !Number.isFinite(gainKg)) return null;
+
+  if (gainKg <= points[0].value) return points[0].p;
+  if (gainKg >= points[points.length - 1].value) return points[points.length - 1].p;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (gainKg >= a.value && gainKg <= b.value) {
+      if (Math.abs(b.value - a.value) < 1e-12) return a.p;
+      const t = (gainKg - a.value) / (b.value - a.value);
+      return a.p + t * (b.p - a.p);
+    }
   }
-  return `z-score ${stats.z.toFixed(2)}<br>Percentile ${stats.percentile.toFixed(1)}`;
+
+  return null;
+}
+
+function formatPercentile(percentile) {
+  return Number.isFinite(percentile) ? `${percentile.toFixed(1)}` : "Unavailable";
 }
 
 function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) {
@@ -172,22 +159,73 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
       line: { width: 3, color: COLORS.line },
       customdata: expected.gains50.map(g => [g]),
       hovertemplate: "Week %{x}<br>Expected weight %{y:.2f} kg<br>Expected gain %{customdata[0]:.2f} kg<extra></extra>"
-    },
-    {
-      x: [0],
-      y: [prePregWeightKg],
-      mode: "markers",
-      name: "Starting weight",
-      marker: { size: 8, color: COLORS.start },
-      customdata: [[0]],
-      hovertemplate: "Week 0<br>Starting weight %{y:.2f} kg<br>Weight gain %{customdata[0]:.2f} kg<extra></extra>"
     }
   ];
+
+  const allMeasurements = [{ week: 0, weightKg: prePregWeightKg, kind: "start" }]
+    .concat(measurements.map(m => ({ ...m, kind: "past" })))
+    .concat(currentPoint ? [{ ...currentPoint, kind: "current" }] : [])
+    .sort((a, b) => a.week - b.week);
+
+  // A single connecting line through all user-entered and starting weights
+  if (allMeasurements.length >= 2) {
+    traces.push({
+      x: allMeasurements.map(m => m.week),
+      y: allMeasurements.map(m => m.weightKg),
+      mode: "lines",
+      name: "Your trajectory",
+      line: { width: 2, color: COLORS.userLine },
+      hoverinfo: "skip"
+    });
+  }
+
+  // Starting weight marker
+  traces.push({
+    x: [0],
+    y: [prePregWeightKg],
+    mode: "markers",
+    name: "Starting weight",
+    marker: { size: 8, color: COLORS.start },
+    customdata: [[0, 0]],
+    hovertemplate:
+      "Week 0<br>" +
+      "Starting weight %{y:.2f} kg<br>" +
+      "Weight gain %{customdata[0]:.2f} kg<br>" +
+      "Percentile %{customdata[1]:.1f}<extra></extra>"
+  });
+
+  if (measurements.length) {
+    const customdata = measurements.map(m => {
+      const gain = m.weightKg - prePregWeightKg;
+      const row = closestRowByWeek(groupData, m.week);
+      const percentile = estimatePercentileFromRow(row, gain);
+      return [gain, percentile];
+    });
+
+    traces.push({
+      x: measurements.map(m => m.week),
+      y: measurements.map(m => m.weightKg),
+      mode: "markers",
+      name: "Past measurements",
+      marker: {
+        size: 8,
+        color: COLORS.user,
+        symbol: "circle"
+      },
+      customdata,
+      hovertemplate:
+        "Week %{x}<br>" +
+        "Your weight %{y:.2f} kg<br>" +
+        "Your gain %{customdata[0]:.2f} kg<br>" +
+        "Percentile %{customdata[1]:.1f}<extra></extra>"
+    });
+  }
 
   if (currentPoint) {
     const currentGain = currentPoint.weightKg - prePregWeightKg;
     const row = closestRowByWeek(groupData, currentPoint.week);
-    const stats = computeBctStats(row, currentGain);
+    const percentile = estimatePercentileFromRow(row, currentGain);
+
     traces.push({
       x: [currentPoint.week],
       y: [currentPoint.weightKg],
@@ -199,42 +237,12 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
         line: { width: 2, color: COLORS.user },
         symbol: "circle"
       },
-      customdata: [[currentGain, stats.z, stats.percentile]],
+      customdata: [[currentGain, percentile]],
       hovertemplate:
         "Week %{x}<br>" +
         "Your weight %{y:.2f} kg<br>" +
         "Your gain %{customdata[0]:.2f} kg<br>" +
-        "z-score %{customdata[1]:.2f}<br>" +
-        "Percentile %{customdata[2]:.1f}<extra></extra>"
-    });
-  }
-
-  if (measurements.length) {
-    const customdata = measurements.map(m => {
-      const gain = m.weightKg - prePregWeightKg;
-      const row = closestRowByWeek(groupData, m.week);
-      const stats = computeBctStats(row, gain);
-      return [gain, stats.z, stats.percentile];
-    });
-
-    traces.push({
-      x: measurements.map(m => m.week),
-      y: measurements.map(m => m.weightKg),
-      mode: "lines+markers",
-      name: "Past measurements",
-      line: { width: 2, color: COLORS.userLine },
-      marker: {
-        size: 8,
-        color: COLORS.user,
-        symbol: "circle"
-      },
-      customdata,
-      hovertemplate:
-        "Week %{x}<br>" +
-        "Your weight %{y:.2f} kg<br>" +
-        "Your gain %{customdata[0]:.2f} kg<br>" +
-        "z-score %{customdata[1]:.2f}<br>" +
-        "Percentile %{customdata[2]:.1f}<extra></extra>"
+        "Percentile %{customdata[1]:.1f}<extra></extra>"
     });
   }
 
@@ -324,7 +332,6 @@ function updateGraph() {
 
   let measurements = parseMeasurements(measurementsText);
 
-  // Avoid duplicating the current point in the past measurements trace
   if (currentPoint) {
     measurements = measurements.filter(
       m => !(Math.abs(m.week - currentPoint.week) < 1e-9 && Math.abs(m.weightKg - currentPoint.weightKg) < 1e-9)

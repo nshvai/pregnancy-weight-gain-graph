@@ -98,5 +98,5 @@ http://localhost:8000/
 
 - The reference curve stays fixed from the paper's model.
 - User-entered measurements are overlaid on top.
-- For each user measurement, the app computes an approximate percentile and z-score from the published BCT parameters for the closest gestational week.
-- The current measurement uses a hollow circle so it is visually distinct from past measurements.
+- For each user measurement, the app computes an approximate percentile from the published percentile columns for the closest gestational week.
+- The current measurement uses a hollow circle so it is visually distinct from past measurements. All measurements, including the starting weight, are connected into a single trajectory.
