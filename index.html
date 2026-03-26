@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pregnancy Weight Gain Chart</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <h1>Pregnancy weight gain chart</h1>
+      <p class="subtitle">
+        Enter your height and pre-pregnancy weight to see the reference curves for your BMI group.
+        You can also add your current weight or multiple measurements.
+      </p>
+    </header>
+
+    <section class="card controls">
+      <div class="grid">
+        <label>
+          <span>Height (cm)</span>
+          <input id="heightCm" type="number" min="100" max="230" step="0.1" value="165">
+        </label>
+
+        <label>
+          <span>Pre-pregnancy weight (kg)</span>
+          <input id="prePregWeightKg" type="number" min="30" max="250" step="0.1" value="60">
+        </label>
+
+        <label>
+          <span>Current gestational age (weeks) — optional</span>
+          <input id="currentWeek" type="number" min="0" max="44" step="0.1" placeholder="e.g. 24">
+        </label>
+
+        <label>
+          <span>Current weight (kg) — optional</span>
+          <input id="currentWeightKg" type="number" min="30" max="250" step="0.1" placeholder="e.g. 66">
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="plotBtn" type="button">Update graph</button>
+        <button id="sampleBtn" type="button" class="secondary">Load example points</button>
+        <button id="clearBtn" type="button" class="secondary">Clear optional inputs</button>
+      </div>
+
+      <div class="summary">
+        <div><strong>BMI:</strong> <span id="bmiValue">—</span></div>
+        <div><strong>BMI group:</strong> <span id="bmiGroup">—</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Your graph</h2>
+      <div id="chart" class="chart"></div>
+      <p class="hint">
+        The darker band shows P25–P75 and the lighter band shows P10–P90.
+        The central line is P50.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Optional: add multiple measurements</h2>
+      <p class="hint">Enter one measurement per line as <code>week,weightKg</code>, for example <code>12,61.2</code>.</p>
+      <textarea id="measurementsInput" rows="7" placeholder="12,61.2&#10;20,64.0&#10;28,68.1"></textarea>
+    </section>
+
+    <section class="card">
+      <h2>Notes</h2>
+      <ul>
+        <li>This tool uses the paper’s week-specific centile tables for six pre-pregnancy BMI groups.</li>
+        <li>It displays cumulative gestational weight gain in kilograms.</li>
+        <li>This is informational only and not medical advice.</li>
+      </ul>
+    </section>
+
+    <footer class="footer">
+      Built from Santos et al. (2018), <em>BMC Medicine</em>, supplementary Tables S4–S9.
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
