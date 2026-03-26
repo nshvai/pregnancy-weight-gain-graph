@@ -164,12 +164,17 @@ function renderChart(groupData, prePregWeightKg, singlePoint, measurements) {
   Plotly.newPlot("chart", traces, layout, { responsive: true, displaylogo: false });
 }
 
+function parseOptionalNumber(id) {
+  const raw = document.getElementById(id).value.trim();
+  return raw === "" ? NaN : Number(raw);
+}
+
 function getInputs() {
   return {
     heightCm: Number(document.getElementById("heightCm").value),
     prePregWeightKg: Number(document.getElementById("prePregWeightKg").value),
-    currentWeek: Number(document.getElementById("currentWeek").value),
-    currentWeightKg: Number(document.getElementById("currentWeightKg").value),
+    currentWeek: parseOptionalNumber("currentWeek"),
+    currentWeightKg: parseOptionalNumber("currentWeightKg"),
     measurementsText: document.getElementById("measurementsInput").value
   };
 }
