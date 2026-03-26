@@ -23,10 +23,11 @@ A plain static HTML/CSS/JavaScript app for GitHub Pages, based on the week-speci
   - Obesity grade 1
   - Obesity grade 2
   - Obesity grade 3
-- The app then renders the corresponding reference curves:
+- The app then renders the corresponding reference curves as expected absolute weight:
   - P10–P90 band
   - P25–P75 band
   - P50 line
+  - weight gain visible on hover
 - Optional:
   - current week + current weight
   - multiple measurements in `week,weightKg` format
@@ -89,5 +90,5 @@ http://localhost:8000/
 ## Notes
 
 - The JSON includes the model parameters (`Mu`, `Sigma`, `Lambda`, `Tau`) and the selected percentiles from the supplementary tables.
-- Current rendering uses the published percentile columns directly rather than recomputing them from the BCT parameters.
+- Current rendering uses the published percentile columns directly rather than recomputing them from the BCT parameters. The chart shows absolute expected weight; weight gain is visible in hover tooltips.
 - Informational only; not medical advice.

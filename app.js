@@ -42,74 +42,106 @@ function parseMeasurements(text) {
   return parsed.sort((a, b) => a.week - b.week);
 }
 
-function gainFromWeight(weightKg, prePregWeightKg) {
-  return weightKg - prePregWeightKg;
+function buildExpectedWeights(groupData, prePregWeightKg) {
+  return {
+    weeks: groupData.map(d => d.week),
+    p10: groupData.map(d => prePregWeightKg + d.P10),
+    p25: groupData.map(d => prePregWeightKg + d.P25),
+    p50: groupData.map(d => prePregWeightKg + d.P50),
+    p75: groupData.map(d => prePregWeightKg + d.P75),
+    p90: groupData.map(d => prePregWeightKg + d.P90),
+    gains10: groupData.map(d => d.P10),
+    gains25: groupData.map(d => d.P25),
+    gains50: groupData.map(d => d.P50),
+    gains75: groupData.map(d => d.P75),
+    gains90: groupData.map(d => d.P90)
+  };
 }
 
 function buildChartData(groupData, prePregWeightKg, singlePoint, measurements) {
-  const weeks = groupData.map(d => d.week);
-  const p10 = groupData.map(d => d.P10);
-  const p25 = groupData.map(d => d.P25);
-  const p50 = groupData.map(d => d.P50);
-  const p75 = groupData.map(d => d.P75);
-  const p90 = groupData.map(d => d.P90);
+  const expected = buildExpectedWeights(groupData, prePregWeightKg);
 
   const traces = [
     {
-      x: weeks, y: p90, mode: "lines", line: { width: 0 },
-      hoverinfo: "skip", showlegend: false
+      x: expected.weeks,
+      y: expected.p90,
+      mode: "lines",
+      line: { width: 0 },
+      hoverinfo: "skip",
+      showlegend: false,
+      customdata: expected.gains90.map(g => [g])
     },
     {
-      x: weeks, y: p10, mode: "lines", line: { width: 0 },
-      fill: "tonexty", fillcolor: COLORS.bandOuter,
-      name: "P10–P90", hoverinfo: "skip"
+      x: expected.weeks,
+      y: expected.p10,
+      mode: "lines",
+      line: { width: 0 },
+      fill: "tonexty",
+      fillcolor: COLORS.bandOuter,
+      name: "P10–P90",
+      hoverinfo: "skip",
+      customdata: expected.gains10.map(g => [g])
     },
     {
-      x: weeks, y: p75, mode: "lines", line: { width: 0 },
-      hoverinfo: "skip", showlegend: false
+      x: expected.weeks,
+      y: expected.p75,
+      mode: "lines",
+      line: { width: 0 },
+      hoverinfo: "skip",
+      showlegend: false,
+      customdata: expected.gains75.map(g => [g])
     },
     {
-      x: weeks, y: p25, mode: "lines", line: { width: 0 },
-      fill: "tonexty", fillcolor: COLORS.bandInner,
-      name: "P25–P75", hoverinfo: "skip"
+      x: expected.weeks,
+      y: expected.p25,
+      mode: "lines",
+      line: { width: 0 },
+      fill: "tonexty",
+      fillcolor: COLORS.bandInner,
+      name: "P25–P75",
+      hoverinfo: "skip",
+      customdata: expected.gains25.map(g => [g])
     },
     {
-      x: weeks,
-      y: p50,
+      x: expected.weeks,
+      y: expected.p50,
       mode: "lines",
       name: "P50",
       line: { width: 3, color: COLORS.line },
-      hovertemplate: "Week %{x}<br>P50 gain %{y:.2f} kg<extra></extra>"
+      customdata: expected.gains50.map(g => [g]),
+      hovertemplate: "Week %{x}<br>Expected weight %{y:.2f} kg<br>Expected gain %{customdata[0]:.2f} kg<extra></extra>"
     }
   ];
 
   if (singlePoint) {
     traces.push({
       x: [singlePoint.week],
-      y: [gainFromWeight(singlePoint.weightKg, prePregWeightKg)],
+      y: [singlePoint.weightKg],
       mode: "markers",
       name: "Current point",
       marker: { size: 10, color: COLORS.user },
-      hovertemplate: "Week %{x}<br>Your gain %{y:.2f} kg<extra></extra>"
+      customdata: [[singlePoint.weightKg - prePregWeightKg]],
+      hovertemplate: "Week %{x}<br>Your weight %{y:.2f} kg<br>Your gain %{customdata[0]:.2f} kg<extra></extra>"
     });
   }
 
   if (measurements.length) {
     traces.push({
       x: measurements.map(m => m.week),
-      y: measurements.map(m => gainFromWeight(m.weightKg, prePregWeightKg)),
+      y: measurements.map(m => m.weightKg),
       mode: "lines+markers",
       name: "Your measurements",
       line: { width: 2, color: COLORS.userLine },
       marker: { size: 8, color: COLORS.user },
-      hovertemplate: "Week %{x}<br>Your gain %{y:.2f} kg<extra></extra>"
+      customdata: measurements.map(m => [m.weightKg - prePregWeightKg]),
+      hovertemplate: "Week %{x}<br>Your weight %{y:.2f} kg<br>Your gain %{customdata[0]:.2f} kg<extra></extra>"
     });
   }
 
   return traces;
 }
 
-function renderChart(groupName, groupData, prePregWeightKg, singlePoint, measurements) {
+function renderChart(groupData, prePregWeightKg, singlePoint, measurements) {
   const traces = buildChartData(groupData, prePregWeightKg, singlePoint, measurements);
 
   const layout = {
@@ -122,15 +154,10 @@ function renderChart(groupName, groupData, prePregWeightKg, singlePoint, measure
       gridcolor: "rgba(0,0,0,0.08)"
     },
     yaxis: {
-      title: "Gestational weight gain (kg)",
+      title: "Expected weight (kg)",
       gridcolor: "rgba(0,0,0,0.08)"
     },
     legend: { orientation: "h", y: 1.1 },
-    title: {
-      text: `${groupName} reference chart`,
-      x: 0.02,
-      xanchor: "left"
-    },
     hovermode: "x unified"
   };
 
@@ -147,9 +174,8 @@ function getInputs() {
   };
 }
 
-function updateSummary(bmi, groupName) {
+function updateSummary(bmi) {
   document.getElementById("bmiValue").textContent = Number.isFinite(bmi) ? bmi.toFixed(1) : "—";
-  document.getElementById("bmiGroup").textContent = groupName || "—";
 }
 
 function updateGraph() {
@@ -162,7 +188,7 @@ function updateGraph() {
 
   const bmi = bmiFromInputs(heightCm, prePregWeightKg);
   const groupName = bmiGroupFromBmi(bmi);
-  updateSummary(bmi, groupName);
+  updateSummary(bmi);
 
   const groupData = centiles[groupName];
   if (!groupData) {
@@ -175,7 +201,7 @@ function updateGraph() {
     : null;
 
   const measurements = parseMeasurements(measurementsText);
-  renderChart(groupName, groupData, prePregWeightKg, singlePoint, measurements);
+  renderChart(groupData, prePregWeightKg, singlePoint, measurements);
 }
 
 async function init() {
