@@ -100,3 +100,11 @@ http://localhost:8000/
 - User-entered measurements are overlaid on top.
 - For each user measurement, the app computes an approximate percentile from the published percentile columns for the closest gestational week.
 - The current measurement uses a hollow circle so it is visually distinct from past measurements. All measurements, including the starting weight, are connected into a single trajectory.
+
+
+## Current UI
+
+- chart-first layout so the graph appears immediately near the top of the page
+- optional inputs collapsed into expandable sections
+- calmer user-measurement styling (teal rather than alert-like red)
+- current measurement shown as a hollow marker, past measurements as filled markers

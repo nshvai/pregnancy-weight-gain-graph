@@ -2,12 +2,12 @@
 const DATA_URL = "data/centiles.json";
 
 const COLORS = {
-  line: "rgb(32, 83, 255)",
-  bandOuter: "rgba(32, 83, 255, 0.14)",
-  bandInner: "rgba(32, 83, 255, 0.28)",
-  user: "rgb(214, 66, 66)",
-  userLine: "rgba(214, 66, 66, 0.35)",
-  start: "rgb(60, 60, 60)"
+  line: "rgb(44, 92, 255)",
+  bandOuter: "rgba(44, 92, 255, 0.12)",
+  bandInner: "rgba(44, 92, 255, 0.24)",
+  user: "rgb(55, 120, 140)",
+  userLine: "rgba(55, 120, 140, 0.45)",
+  start: "rgb(85, 92, 110)"
 };
 
 let centiles = null;
@@ -53,9 +53,7 @@ function buildExpectedWeights(groupData, prePregWeightKg) {
     p90: groupData.map(d => prePregWeightKg + d.P90),
     gains10: groupData.map(d => d.P10),
     gains25: groupData.map(d => d.P25),
-    gains50: groupData.map(d => d.P50),
-    gains75: groupData.map(d => d.P75),
-    gains90: groupData.map(d => d.P90)
+    gains50: groupData.map(d => d.P50)
   };
 }
 
@@ -72,8 +70,6 @@ function closestRowByWeek(groupData, week) {
   return best;
 }
 
-// Estimate percentile directly from the published percentile columns in the supplementary tables.
-// This is more robust for the UI than exposing z-scores and avoids the previous broken values.
 function estimatePercentileFromRow(row, gainKg) {
   const percentileKeys = [
     "P1", "P2.3", "P5", "P10", "P16", "P20", "P25",
@@ -90,7 +86,6 @@ function estimatePercentileFromRow(row, gainKg) {
     .sort((a, b) => a.value - b.value);
 
   if (!points.length || !Number.isFinite(gainKg)) return null;
-
   if (gainKg <= points[0].value) return points[0].p;
   if (gainKg >= points[points.length - 1].value) return points[points.length - 1].p;
 
@@ -103,12 +98,7 @@ function estimatePercentileFromRow(row, gainKg) {
       return a.p + t * (b.p - a.p);
     }
   }
-
   return null;
-}
-
-function formatPercentile(percentile) {
-  return Number.isFinite(percentile) ? `${percentile.toFixed(1)}` : "Unavailable";
 }
 
 function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) {
@@ -167,19 +157,17 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
     .concat(currentPoint ? [{ ...currentPoint, kind: "current" }] : [])
     .sort((a, b) => a.week - b.week);
 
-  // A single connecting line through all user-entered and starting weights
   if (allMeasurements.length >= 2) {
     traces.push({
       x: allMeasurements.map(m => m.week),
       y: allMeasurements.map(m => m.weightKg),
       mode: "lines",
       name: "Your trajectory",
-      line: { width: 2, color: COLORS.userLine },
+      line: { width: 2.5, color: COLORS.userLine },
       hoverinfo: "skip"
     });
   }
 
-  // Starting weight marker
   traces.push({
     x: [0],
     y: [prePregWeightKg],
@@ -213,6 +201,7 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
         symbol: "circle"
       },
       customdata,
+      hoverlabel: { bgcolor: "#f4fbfd", bordercolor: "#6ba3b3", font: { color: "#20414b" } },
       hovertemplate:
         "Week %{x}<br>" +
         "Your weight %{y:.2f} kg<br>" +
@@ -234,10 +223,11 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
       marker: {
         size: 12,
         color: "white",
-        line: { width: 2, color: COLORS.user },
+        line: { width: 2.5, color: COLORS.user },
         symbol: "circle"
       },
       customdata: [[currentGain, percentile]],
+      hoverlabel: { bgcolor: "#f4fbfd", bordercolor: "#6ba3b3", font: { color: "#20414b" } },
       hovertemplate:
         "Week %{x}<br>" +
         "Your weight %{y:.2f} kg<br>" +
@@ -253,19 +243,21 @@ function renderChart(groupData, prePregWeightKg, currentPoint, measurements) {
   const traces = buildChartData(groupData, prePregWeightKg, currentPoint, measurements);
 
   const layout = {
-    margin: { l: 60, r: 20, t: 30, b: 60 },
+    margin: { l: 62, r: 18, t: 12, b: 58 },
     paper_bgcolor: "white",
     plot_bgcolor: "white",
     xaxis: {
       title: "Gestational age (weeks)",
       range: [0, 44],
-      gridcolor: "rgba(0,0,0,0.08)"
+      gridcolor: "rgba(0,0,0,0.06)",
+      zeroline: false
     },
     yaxis: {
       title: "Expected weight (kg)",
-      gridcolor: "rgba(0,0,0,0.08)"
+      gridcolor: "rgba(0,0,0,0.06)",
+      zeroline: false
     },
-    legend: { orientation: "h", y: 1.1 },
+    legend: { orientation: "h", y: 1.12, x: 0, bgcolor: "rgba(255,255,255,0.85)" },
     hovermode: "closest"
   };
 
@@ -331,7 +323,6 @@ function updateGraph() {
     : null;
 
   let measurements = parseMeasurements(measurementsText);
-
   if (currentPoint) {
     measurements = measurements.filter(
       m => !(Math.abs(m.week - currentPoint.week) < 1e-9 && Math.abs(m.weightKg - currentPoint.weightKg) < 1e-9)

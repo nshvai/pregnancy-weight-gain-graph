@@ -3,22 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pregnancy Weight Curve</title>
+  <title>Gestational weight curve</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
   <main class="page">
     <header class="hero">
-      <h1>Pregnancy weight curve</h1>
-      <p class="subtitle">
-        Enter your height and pre-pregnancy weight to see the reference curves for your expected weight during pregnancy.
-        You can also add your current weight or multiple measurements.
-      </p>
+      <h1>Gestational weight curve</h1>
+      <p class="subtitle">Enter your height and pre-pregnancy weight to see your reference pregnancy weight curve.</p>
     </header>
 
+    <section class="card chart-card">
+      <div class="chart-header">
+        <div class="chart-meta">
+          <span><strong>BMI:</strong> <span id="bmiValue">—</span></span>
+        </div>
+      </div>
+      <div id="chart" class="chart"></div>
+      <p class="hint">
+        The darker band shows P25–P75 and the lighter band shows P10–P90.
+        Hover to see expected weight, weight gain, and the approximate percentile for your measurements.
+      </p>
+    </section>
+
     <section class="card controls">
-      <div class="grid">
+      <h2>Inputs</h2>
+      <div class="grid compact-grid">
         <label>
           <span>Height (cm)</span>
           <input id="heightCm" type="number" min="100" max="230" step="0.1" value="165">
@@ -28,51 +39,48 @@
           <span>Pre-pregnancy weight (kg)</span>
           <input id="prePregWeightKg" type="number" min="30" max="250" step="0.1" value="60">
         </label>
-
-        <label>
-          <span>Current gestational age (weeks) — optional</span>
-          <input id="currentWeek" type="number" min="0" max="44" step="0.1" placeholder="e.g. 24">
-        </label>
-
-        <label>
-          <span>Current weight (kg) — optional</span>
-          <input id="currentWeightKg" type="number" min="30" max="250" step="0.1" placeholder="e.g. 66">
-        </label>
       </div>
 
       <div class="actions">
         <button id="plotBtn" type="button">Update graph</button>
+      </div>
+
+      <details class="accordion">
+        <summary>Add current measurement</summary>
+        <div class="grid">
+          <label>
+            <span>Current gestational age (weeks)</span>
+            <input id="currentWeek" type="number" min="0" max="44" step="0.1" placeholder="e.g. 24">
+          </label>
+
+          <label>
+            <span>Current weight (kg)</span>
+            <input id="currentWeightKg" type="number" min="30" max="250" step="0.1" placeholder="e.g. 66">
+          </label>
+        </div>
+      </details>
+
+      <details class="accordion">
+        <summary>Add past measurements</summary>
+        <p class="hint">Enter one measurement per line as <code>week,weightKg</code>, for example <code>12,61.2</code>.</p>
+        <textarea id="measurementsInput" rows="6" placeholder="12,61.2&#10;20,64.0&#10;28,68.1"></textarea>
+      </details>
+
+      <div class="actions secondary-actions">
         <button id="sampleBtn" type="button" class="secondary">Load example points</button>
         <button id="clearBtn" type="button" class="secondary">Clear optional inputs</button>
       </div>
-
-      <div class="summary">
-        <div><strong>BMI:</strong> <span id="bmiValue">—</span></div>
-      </div>
     </section>
 
-    <section class="card">
-      <h2>Gestational weight curve</h2>
-      <div id="chart" class="chart"></div>
-      <p class="hint">
-        The darker band shows P25–P75 and the lighter band shows P10–P90.
-        The central line is P50. Hover to see expected weight, weight gain, and the approximate percentile for your measurements.
-      </p>
-    </section>
-
-    <section class="card">
-      <h2>Optional: add multiple measurements</h2>
-      <p class="hint">Enter one measurement per line as <code>week,weightKg</code>, for example <code>12,61.2</code>.</p>
-      <textarea id="measurementsInput" rows="7" placeholder="12,61.2&#10;20,64.0&#10;28,68.1"></textarea>
-    </section>
-
-    <section class="card">
-      <h2>Notes</h2>
-      <ul>
-        <li>This tool uses the paper’s week-specific centile tables for six pre-pregnancy BMI groups.</li>
-        <li>It displays expected absolute weight in kilograms, with weight gain and approximate percentile available on hover for user measurements.</li>
-        <li>This is informational only and not medical advice.</li>
-      </ul>
+    <section class="card notes-card">
+      <details class="accordion openish">
+        <summary>About this chart</summary>
+        <ul>
+          <li>This tool uses the paper’s week-specific centile tables for six pre-pregnancy BMI groups.</li>
+          <li>It displays expected absolute weight in kilograms, with weight gain and approximate percentile available on hover for user measurements.</li>
+          <li>This is informational only and not medical advice.</li>
+        </ul>
+      </details>
     </section>
 
     <footer class="footer">
