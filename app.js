@@ -248,8 +248,14 @@ function updateSummary(bmi) {
 
 function updateGraph() {
   const { heightCm, prePregWeightKg, currentWeekRaw, currentWeightRaw, currentWeek, currentWeightKg, measurements } = getInputs();
-  if (!Number.isFinite(heightCm) || !Number.isFinite(prePregWeightKg) || heightCm <= 0 || prePregWeightKg <= 0) return;
-
+  if (
+  !Number.isFinite(heightCm) ||
+  !Number.isFinite(prePregWeightKg) ||
+  heightCm < 120 || heightCm > 220 ||
+  prePregWeightKg < 35 || prePregWeightKg > 200
+) {
+  return;
+}
   const bmi = bmiFromInputs(heightCm, prePregWeightKg);
   const groupName = bmiGroupFromBmi(bmi);
   updateSummary(bmi);
