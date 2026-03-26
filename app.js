@@ -11,6 +11,8 @@ const COLORS = {
 };
 
 let centiles = null;
+let measurementIdCounter = 0;
+let debounceTimer = null;
 
 function bmiFromInputs(heightCm, prePregWeightKg) {
   const heightM = heightCm / 100;
@@ -25,22 +27,6 @@ function bmiGroupFromBmi(bmi) {
   if (bmi < 35) return "Obesity grade 1";
   if (bmi < 40) return "Obesity grade 2";
   return "Obesity grade 3";
-}
-
-function parseMeasurements(text) {
-  if (!text.trim()) return [];
-  const lines = text.split(/\n+/);
-  const parsed = [];
-
-  for (const line of lines) {
-    const [weekStr, weightStr] = line.split(",").map(x => x && x.trim());
-    const week = Number(weekStr);
-    const weightKg = Number(weightStr);
-    if (Number.isFinite(week) && Number.isFinite(weightKg)) {
-      parsed.push({ week, weightKg });
-    }
-  }
-  return parsed.sort((a, b) => a.week - b.week);
 }
 
 function buildExpectedWeights(groupData, prePregWeightKg) {
@@ -105,42 +91,10 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
   const expected = buildExpectedWeights(groupData, prePregWeightKg);
 
   const traces = [
-    {
-      x: expected.weeks,
-      y: expected.p90,
-      mode: "lines",
-      line: { width: 0 },
-      hoverinfo: "skip",
-      showlegend: false
-    },
-    {
-      x: expected.weeks,
-      y: expected.p10,
-      mode: "lines",
-      line: { width: 0 },
-      fill: "tonexty",
-      fillcolor: COLORS.bandOuter,
-      name: "P10–P90",
-      hoverinfo: "skip"
-    },
-    {
-      x: expected.weeks,
-      y: expected.p75,
-      mode: "lines",
-      line: { width: 0 },
-      hoverinfo: "skip",
-      showlegend: false
-    },
-    {
-      x: expected.weeks,
-      y: expected.p25,
-      mode: "lines",
-      line: { width: 0 },
-      fill: "tonexty",
-      fillcolor: COLORS.bandInner,
-      name: "P25–P75",
-      hoverinfo: "skip"
-    },
+    { x: expected.weeks, y: expected.p90, mode: "lines", line: { width: 0 }, hoverinfo: "skip", showlegend: false },
+    { x: expected.weeks, y: expected.p10, mode: "lines", line: { width: 0 }, fill: "tonexty", fillcolor: COLORS.bandOuter, name: "P10–P90", hoverinfo: "skip" },
+    { x: expected.weeks, y: expected.p75, mode: "lines", line: { width: 0 }, hoverinfo: "skip", showlegend: false },
+    { x: expected.weeks, y: expected.p25, mode: "lines", line: { width: 0 }, fill: "tonexty", fillcolor: COLORS.bandInner, name: "P25–P75", hoverinfo: "skip" },
     {
       x: expected.weeks,
       y: expected.p50,
@@ -175,11 +129,7 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
     name: "Starting weight",
     marker: { size: 8, color: COLORS.start },
     customdata: [[0, 0]],
-    hovertemplate:
-      "Week 0<br>" +
-      "Starting weight %{y:.2f} kg<br>" +
-      "Weight gain %{customdata[0]:.2f} kg<br>" +
-      "Percentile %{customdata[1]:.1f}<extra></extra>"
+    hovertemplate: "Week 0<br>Starting weight %{y:.2f} kg<br>Weight gain %{customdata[0]:.2f} kg<br>Percentile %{customdata[1]:.1f}<extra></extra>"
   });
 
   if (measurements.length) {
@@ -195,18 +145,10 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
       y: measurements.map(m => m.weightKg),
       mode: "markers",
       name: "Past measurements",
-      marker: {
-        size: 8,
-        color: COLORS.user,
-        symbol: "circle"
-      },
+      marker: { size: 8, color: COLORS.user, symbol: "circle" },
       customdata,
       hoverlabel: { bgcolor: "#f4fbfd", bordercolor: "#6ba3b3", font: { color: "#20414b" } },
-      hovertemplate:
-        "Week %{x}<br>" +
-        "Your weight %{y:.2f} kg<br>" +
-        "Your gain %{customdata[0]:.2f} kg<br>" +
-        "Percentile %{customdata[1]:.1f}<extra></extra>"
+      hovertemplate: "Week %{x}<br>Your weight %{y:.2f} kg<br>Your gain %{customdata[0]:.2f} kg<br>Percentile %{customdata[1]:.1f}<extra></extra>"
     });
   }
 
@@ -220,19 +162,10 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
       y: [currentPoint.weightKg],
       mode: "markers",
       name: "Current measurement",
-      marker: {
-        size: 12,
-        color: "white",
-        line: { width: 2.5, color: COLORS.user },
-        symbol: "circle"
-      },
+      marker: { size: 12, color: "white", line: { width: 2.5, color: COLORS.user }, symbol: "circle" },
       customdata: [[currentGain, percentile]],
       hoverlabel: { bgcolor: "#f4fbfd", bordercolor: "#6ba3b3", font: { color: "#20414b" } },
-      hovertemplate:
-        "Week %{x}<br>" +
-        "Your weight %{y:.2f} kg<br>" +
-        "Your gain %{customdata[0]:.2f} kg<br>" +
-        "Percentile %{customdata[1]:.1f}<extra></extra>"
+      hovertemplate: "Week %{x}<br>Your weight %{y:.2f} kg<br>Your gain %{customdata[0]:.2f} kg<br>Percentile %{customdata[1]:.1f}<extra></extra>"
     });
   }
 
@@ -241,26 +174,15 @@ function buildChartData(groupData, prePregWeightKg, currentPoint, measurements) 
 
 function renderChart(groupData, prePregWeightKg, currentPoint, measurements) {
   const traces = buildChartData(groupData, prePregWeightKg, currentPoint, measurements);
-
   const layout = {
     margin: { l: 62, r: 18, t: 12, b: 58 },
     paper_bgcolor: "white",
     plot_bgcolor: "white",
-    xaxis: {
-      title: "Gestational age (weeks)",
-      range: [0, 44],
-      gridcolor: "rgba(0,0,0,0.06)",
-      zeroline: false
-    },
-    yaxis: {
-      title: "Expected weight (kg)",
-      gridcolor: "rgba(0,0,0,0.06)",
-      zeroline: false
-    },
+    xaxis: { title: "Gestational age (weeks)", range: [0, 44], gridcolor: "rgba(0,0,0,0.06)", zeroline: false },
+    yaxis: { title: "Expected weight (kg)", gridcolor: "rgba(0,0,0,0.06)", zeroline: false },
     legend: { orientation: "h", y: 1.12, x: 0, bgcolor: "rgba(255,255,255,0.85)" },
     hovermode: "closest"
   };
-
   Plotly.newPlot("chart", traces, layout, { responsive: true, displaylogo: false });
 }
 
@@ -272,10 +194,43 @@ function readOptionalField(id) {
   return document.getElementById(id).value.trim();
 }
 
+function createMeasurementRow(week = "", weight = "") {
+  const rows = document.getElementById("measurementRows");
+  const row = document.createElement("div");
+  row.className = "measurement-row";
+  row.dataset.rowId = String(measurementIdCounter++);
+
+  row.innerHTML = `
+    <input type="number" class="measurement-week" min="0" max="44" step="0.1" placeholder="e.g. 12" value="${week}">
+    <input type="number" class="measurement-weight" min="30" max="250" step="0.1" placeholder="e.g. 61.2" value="${weight}">
+    <button type="button" class="remove-row-btn" aria-label="Remove measurement">×</button>
+  `;
+
+  row.querySelectorAll("input").forEach(input => input.addEventListener("input", debouncedUpdateGraph));
+  row.querySelector(".remove-row-btn").addEventListener("click", () => { row.remove(); updateGraph(); });
+  rows.appendChild(row);
+}
+
+function getMeasurementsFromRows() {
+  const rows = [...document.querySelectorAll(".measurement-row")];
+  return rows.map(row => {
+    const weekRaw = row.querySelector(".measurement-week").value.trim();
+    const weightRaw = row.querySelector(".measurement-weight").value.trim();
+    const week = weekRaw === "" ? NaN : Number(weekRaw);
+    const weightKg = weightRaw === "" ? NaN : Number(weightRaw);
+    return { week, weightKg };
+  }).filter(m => Number.isFinite(m.week) && Number.isFinite(m.weightKg)).sort((a, b) => a.week - b.week);
+}
+
+function setMeasurementsRows(measurements) {
+  const rows = document.getElementById("measurementRows");
+  rows.innerHTML = "";
+  measurements.forEach(m => createMeasurementRow(String(m.week), String(m.weightKg)));
+}
+
 function getInputs() {
   const currentWeekRaw = readOptionalField("currentWeek");
   const currentWeightRaw = readOptionalField("currentWeightKg");
-
   return {
     heightCm: parseRequiredNumber("heightCm"),
     prePregWeightKg: parseRequiredNumber("prePregWeightKg"),
@@ -283,7 +238,7 @@ function getInputs() {
     currentWeightRaw,
     currentWeek: currentWeekRaw === "" ? NaN : Number(currentWeekRaw),
     currentWeightKg: currentWeightRaw === "" ? NaN : Number(currentWeightRaw),
-    measurementsText: document.getElementById("measurementsInput").value
+    measurements: getMeasurementsFromRows()
   };
 }
 
@@ -292,64 +247,60 @@ function updateSummary(bmi) {
 }
 
 function updateGraph() {
-  const {
-    heightCm,
-    prePregWeightKg,
-    currentWeekRaw,
-    currentWeightRaw,
-    currentWeek,
-    currentWeightKg,
-    measurementsText
-  } = getInputs();
-
-  if (!Number.isFinite(heightCm) || !Number.isFinite(prePregWeightKg) || heightCm <= 0 || prePregWeightKg <= 0) {
-    alert("Please enter valid values for height and pre-pregnancy weight.");
-    return;
-  }
+  const { heightCm, prePregWeightKg, currentWeekRaw, currentWeightRaw, currentWeek, currentWeightKg, measurements } = getInputs();
+  if (!Number.isFinite(heightCm) || !Number.isFinite(prePregWeightKg) || heightCm <= 0 || prePregWeightKg <= 0) return;
 
   const bmi = bmiFromInputs(heightCm, prePregWeightKg);
   const groupName = bmiGroupFromBmi(bmi);
   updateSummary(bmi);
 
   const groupData = centiles[groupName];
-  if (!groupData) {
-    alert("Could not find the reference data for this BMI group.");
-    return;
-  }
+  if (!groupData) return;
 
   const hasCurrentPoint = currentWeekRaw !== "" && currentWeightRaw !== "";
   const currentPoint = hasCurrentPoint && Number.isFinite(currentWeek) && Number.isFinite(currentWeightKg)
     ? { week: currentWeek, weightKg: currentWeightKg }
     : null;
 
-  let measurements = parseMeasurements(measurementsText);
+  let filteredMeasurements = measurements;
   if (currentPoint) {
-    measurements = measurements.filter(
-      m => !(Math.abs(m.week - currentPoint.week) < 1e-9 && Math.abs(m.weightKg - currentPoint.weightKg) < 1e-9)
-    );
+    filteredMeasurements = measurements.filter(m => !(Math.abs(m.week - currentPoint.week) < 1e-9 && Math.abs(m.weightKg - currentPoint.weightKg) < 1e-9));
   }
 
-  renderChart(groupData, prePregWeightKg, currentPoint, measurements);
+  renderChart(groupData, prePregWeightKg, currentPoint, filteredMeasurements);
+}
+
+function debouncedUpdateGraph() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(updateGraph, 250);
+}
+
+function bindLiveUpdates() {
+  ["heightCm", "prePregWeightKg", "currentWeek", "currentWeightKg"].forEach(id => {
+    document.getElementById(id).addEventListener("input", debouncedUpdateGraph);
+  });
+
+  document.getElementById("addMeasurementBtn").addEventListener("click", () => createMeasurementRow());
+
+  document.getElementById("sampleBtn").addEventListener("click", () => {
+    document.getElementById("currentWeek").value = "28";
+    document.getElementById("currentWeightKg").value = "68";
+    setMeasurementsRows([{ week: 12, weightKg: 61.2 }, { week: 20, weightKg: 64.0 }, { week: 28, weightKg: 68.0 }]);
+    updateGraph();
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    document.getElementById("currentWeek").value = "";
+    document.getElementById("currentWeightKg").value = "";
+    setMeasurementsRows([]);
+    updateGraph();
+  });
 }
 
 async function init() {
   const response = await fetch(DATA_URL);
   centiles = await response.json();
-
-  document.getElementById("plotBtn").addEventListener("click", updateGraph);
-  document.getElementById("sampleBtn").addEventListener("click", () => {
-    document.getElementById("currentWeek").value = "28";
-    document.getElementById("currentWeightKg").value = "68";
-    document.getElementById("measurementsInput").value = "12,61.2\n20,64.0\n28,68.0";
-    updateGraph();
-  });
-  document.getElementById("clearBtn").addEventListener("click", () => {
-    document.getElementById("currentWeek").value = "";
-    document.getElementById("currentWeightKg").value = "";
-    document.getElementById("measurementsInput").value = "";
-    updateGraph();
-  });
-
+  bindLiveUpdates();
   updateGraph();
 }
 

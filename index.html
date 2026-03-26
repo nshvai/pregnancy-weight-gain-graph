@@ -22,13 +22,12 @@
       </div>
       <div id="chart" class="chart"></div>
       <p class="hint">
-        The darker band shows P25–P75 and the lighter band shows P10–P90.
-        Hover to see expected weight, weight gain, and the approximate percentile for your measurements.
+        Darker band: P25–P75. Lighter band: P10–P90. Hover for weight, gain, and percentile.
       </p>
     </section>
 
     <section class="card controls">
-      <h2>Inputs</h2>
+      <h2>Personalise the chart</h2>
       <div class="grid compact-grid">
         <label>
           <span>Height (cm)</span>
@@ -39,10 +38,6 @@
           <span>Pre-pregnancy weight (kg)</span>
           <input id="prePregWeightKg" type="number" min="30" max="250" step="0.1" value="60">
         </label>
-      </div>
-
-      <div class="actions">
-        <button id="plotBtn" type="button">Update graph</button>
       </div>
 
       <details class="accordion">
@@ -62,8 +57,20 @@
 
       <details class="accordion">
         <summary>Add past measurements</summary>
-        <p class="hint">Enter one measurement per line as <code>week,weightKg</code>, for example <code>12,61.2</code>.</p>
-        <textarea id="measurementsInput" rows="6" placeholder="12,61.2&#10;20,64.0&#10;28,68.1"></textarea>
+        <p class="hint">Add any previous weigh-ins to compare them with the reference curve.</p>
+
+        <div class="measurement-table" id="measurementTable">
+          <div class="measurement-header">
+            <div>Week</div>
+            <div>Weight (kg)</div>
+            <div></div>
+          </div>
+          <div id="measurementRows"></div>
+        </div>
+
+        <div class="actions inline-actions">
+          <button id="addMeasurementBtn" type="button" class="secondary">+ Add measurement</button>
+        </div>
       </details>
 
       <div class="actions secondary-actions">
@@ -73,18 +80,19 @@
     </section>
 
     <section class="card notes-card">
-      <details class="accordion openish">
+      <details class="accordion">
         <summary>About this chart</summary>
         <ul>
           <li>This tool uses the paper’s week-specific centile tables for six pre-pregnancy BMI groups.</li>
-          <li>It displays expected absolute weight in kilograms, with weight gain and approximate percentile available on hover for user measurements.</li>
+          <li>It shows expected absolute weight in kilograms, with weight gain and approximate percentile available on hover for user measurements.</li>
           <li>This is informational only and not medical advice.</li>
         </ul>
       </details>
     </section>
 
     <footer class="footer">
-      Built from Santos et al. (2018), <em>BMC Medicine</em>, supplementary Tables S4–S9.
+      <div>Built from Santos et al. (2018), <em>BMC Medicine</em>, supplementary Tables S4–S9.</div>
+      <div>Created by <a href="https://nshvai.github.io/" target="_blank" rel="noopener noreferrer">Nadiya Shvai</a>.</div>
     </footer>
   </main>
 
