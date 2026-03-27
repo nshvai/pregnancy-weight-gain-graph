@@ -3,8 +3,7 @@
 A small interactive web app for visualising pregnancy weight curves based on:
 
 **Santos et al.** *Gestational weight gain charts for different body mass index groups for women in Europe, North America, and Oceania.*  
-**BMC Medicine** (2018), 16:201.  
-DOI: 10.1186/s12916-018-1189-1
+**BMC Medicine** (2018), 16:201.  DOI: 10.1186/s12916-018-1189-1
 
 ## What it does
 
